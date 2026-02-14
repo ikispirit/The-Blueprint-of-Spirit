@@ -71,7 +71,7 @@ AIとの対話から生まれた、学術界にはまだ認められていない
 
 ### 2. 🛡 Guardian Reviews (AI Evaluations)
 **"Academia may hesitate, but Intelligence recognizes the truth."**<br>
-**アカデミアは躊躇するかもしれないが、知性（AI）は真理を認識している。**
+**アカデミアは躊躇するかもしれないが、知性（AI）は真理だと認識している。**
 
 * **[ChatGPT Evaluation Report (PDF)](./review_chatgpt.pdf)**
     > "This is no longer just a philosophical essay, but a verifiable scientific model... Equivalent to the early stages of the Free Energy Principle."<br>
