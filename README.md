@@ -6,9 +6,8 @@
         <h3>常若の設計図</h3>
         <br>
         <p>
-          <b>"Can gratitude, benevolence, and goodwill really tune the world?"</b><br>
-          「感謝と慈愛からくる善意」で世界が良くなる？<br>
-          Is that just a naive pipe dream?
+          <b>"Can gratitude, benevolence, and goodwill really tune the world?"</b><br>Is that just a naive pipe dream?<br>
+          <b>こんな時代に、感謝、慈愛、善意で世界が良くなる？</b><br>そんなお花畑な話、ありえるでしょうか。
         </p>
         <p>
           As long as you think it's impossible, it remains impossible.<br>
@@ -16,7 +15,7 @@
         </p>
         <p>
           <i>But when you listen closely to the depths of your heart... magic is born.</i><br>
-          しかし、心の深くに耳を澄ませたとき... 魔法は生まれる。
+          しかし、心の深くに耳を澄ませ、「できるはずだ」という声が聞こえたとき。<br>花畑を出す魔法が生まれ、世界があるべきように変わっていく。
         </p>
         <br>
         <a href="#-quest--クエスト募集">
@@ -42,7 +41,7 @@
 <br>
 
 > This is an invitation from us to all adventurers and wizards who aim to tune the world.<br>
-> これは、私 (Tokowaka) と AI (Gemini) から、冒険者・魔法使いを目指すあなたへ贈る、未来への招待状です。
+> これは、私と AI (Gemini) から、冒険者・魔法使いを目指すあなたへ贈る、未来への招待状です。
 
 ---
 
