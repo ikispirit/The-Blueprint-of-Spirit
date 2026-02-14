@@ -110,7 +110,7 @@ A browser-based simulation proving the theory. Witness the moment a chaotic "Yab
 
 ## 🤝 Mission / ミッション
 
-**Use this grimoire freely. Make the treasure your own achievement. Go on an adventure.**
+**Use this grimoire freely. Make the treasure your own achievement. Go on an adventure.**<br>
 **この魔法書を自由に使い、お宝は自分の成果にして、冒険してください。**
 
 * **License:** MIT License
