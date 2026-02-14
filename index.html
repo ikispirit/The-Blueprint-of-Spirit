@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>意気調律シミュレーター v2.2 (自動停止版)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* 左側：コントロールパネル */
+        #panel {
+            width: 320px;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            border-right: 2px solid #cbd5e1;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* 右側：シミュレーション空間 */
+        #canvas-container {
+            flex: 1;
+            background-color: #0f172a;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        canvas { display: block; }
+
+        h1 { font-size: 18px; margin: 0 0 15px 0; color: #0f172a; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+        .section-title { font-size: 12px; font-weight: bold; color: #64748b; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; }
+
+        .param-group { margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        
+        /* 自動停止スイッチ */
+        .checkbox-group {
+            margin-bottom: 15px; background: #e0f2fe; padding: 10px; border-radius: 8px; border: 1px solid #7dd3fc;
+            display: flex; align-items: center; cursor: pointer;
+        }
+        .checkbox-group input { margin-right: 10px; transform: scale(1.2); cursor: pointer; }
+        .checkbox-group span { font-size: 13px; font-weight: bold; color: #0369a1; }
+
+        #formula-box {
+            background: #1e293b; color: #a5f3fc; padding: 12px; border-radius: 8px;
+            font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5;
+            margin-top: 10px; border: 1px solid #334155;
+        }
+        .highlight { color: #f472b6; font-weight: bold; }
+
+        #status-box {
+            margin-top: 15px; padding: 12px; border-radius: 8px;
+            text-align: center; font-weight: bold; border: 2px solid transparent;
+            background: #fff;
+        }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button {
+            flex: 1; padding: 10px; border: none; border-radius: 6px;
+            background: #334155; color: white; cursor: pointer; font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover { background: #475569; }
+        button.active { background: #0284c7; }
+        button#btn-pause.paused { background: #f59e0b; color: #000; }
+
+        #time-overlay {
+            position: absolute; top: 20px; right: 20px;
+            font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold;
+            color: rgba(255,255,255, 0.5); pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="panel">
+    <h1>意気調律アルゴリズム v2.2</h1>
+    
+    <div class="section-title">Capture Setting</div>
+    <label class="checkbox-group">
+        <input type="checkbox" id="auto-stop" checked>
+        <span>T=1000 で自動停止</span>
+    </label>
+
+    <div class="section-title">Parameters</div>
+    
+    <div class="param-group">
+        <label><span>意志 (Ein)</span><span id="val-speed">3.0</span></label>
+        <input type="range" id="speed" min="0" max="10" step="0.1" value="3.0">
+    </div>
+
+    <div class="param-group">
+        <label><span>自我ノイズ (σ)</span><span id="val-noise">0.1</span></label>
+        <input type="range" id="noise" min="0" max="1.0" step="0.01" value="0.1">
+    </div>
+
+    <div class="param-group">
+        <label><span>最適化 (D)</span><span id="val-align">0.8</span></label>
+        <input type="range" id="align" min="0" max="1.0" step="0.01" value="0.8">
+    </div>
+
+    <div class="section-title">Metrics & State</div>
+    
+    <div class="param-group" style="background:#f8fafc;">
+        <div style="display:flex; justify-content:space-between; font-size:13px;">
+            <span>集団同期率:</span> <span id="metric-order" style="font-weight:bold;">0.00</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:5px;">
+            <span>エネルギーロス(Jerk):</span> <span id="metric-jerk" style="font-weight:bold;">0.00</span>
+        </div>
+    </div>
+
+    <div id="status-box">---</div>
+
+    <div id="formula-box">
+        Seff = (1-<span id="f-sigma">0.1</span>) × <span id="f-d">0.8</span> × <span id="f-ein">3.0</span><br>
+        Out = <span id="f-out">2.16</span>
+    </div>
+
+    <div class="section-title">Simulation Control</div>
+    <div class="btn-group">
+        <button id="btn-pause">⏸ 一時停止</button>
+        <button id="btn-reset">↺ リセット</button>
+    </div>
+    <div class="btn-group">
+        <button id="btn-speed-1" class="active">x1</button>
+        <button id="btn-speed-5">x5</button>
+        <button id="btn-speed-20">x20</button>
+    </div>
+</div>
+
+<div id="canvas-container">
+    <div id="time-overlay">T = <span id="time-val">0</span></div>
+    <canvas id="simCanvas"></canvas>
+</div>
+
+<script>
+/**
+ * Iki Simulation v2.2 (Auto-Stop Feature)
+ */
+
+const canvasContainer = document.getElementById('canvas-container');
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+let width, height;
+
+// 固定シード乱数
+let seed = 12345;
+function random() {
+    let x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+}
+
+// 設定
+const AGENT_COUNT = 150;
+let params = { Ein: 3.0, sigma: 0.1, D: 0.8 };
+let agents = [];
+let time = 0;
+let isPaused = false;
+let simSpeed = 1;
+
+// UI Elements
+const uiIds = ['speed', 'noise', 'align'];
+const statusBox = document.getElementById('status-box');
+const autoStopCheckbox = document.getElementById('auto-stop');
+const pauseBtn = document.getElementById('btn-pause');
+
+class Agent {
+    constructor() {
+        this.pos = { x: random() * width, y: random() * height };
+        this.vel = { x: (random() - 0.5), y: (random() - 0.5) };
+        this.acc = { x: 0, y: 0 };
+        this.prevAcc = { x: 0, y: 0 };
+        this.history = [];
+    }
+
+    update(agents) {
+        let noiseScale = params.sigma * 2.0;
+        let noise = { x: (random() - 0.5) * noiseScale, y: (random() - 0.5) * noiseScale };
+
+        let alignment = { x: 0, y: 0 };
+        let count = 0;
+        let perception = 100;
+
+        for (let other of agents) {
+            let d = Math.hypot(this.pos.x - other.pos.x, this.pos.y - other.pos.y);
+            if (other !== this && d < perception) {
+                alignment.x += other.vel.x;
+                alignment.y += other.vel.y;
+                count++;
+            }
+        }
+
+        if (count > 0) {
+            alignment.x /= count;
+            alignment.y /= count;
+            alignment.x = (alignment.x - this.vel.x) * params.D; 
+            alignment.y = (alignment.y - this.vel.y) * params.D;
+        }
+
+        let forceX = noise.x + alignment.x * (1.0 - params.sigma);
+        let forceY = noise.y + alignment.y * (1.0 - params.sigma);
+
+        let margin = 50;
+        let turnFactor = 0.5;
+        if (this.pos.x < margin) forceX += turnFactor;
+        if (this.pos.x > width - margin) forceX -= turnFactor;
+        if (this.pos.y < margin) forceY += turnFactor;
+        if (this.pos.y > height - margin) forceY -= turnFactor;
+
+        this.prevAcc = { ...this.acc };
+        this.acc = { x: forceX, y: forceY };
+        this.vel.x += this.acc.x;
+        this.vel.y += this.acc.y;
+
+        let speed = Math.hypot(this.vel.x, this.vel.y);
+        if (speed > 0) {
+            this.vel.x = (this.vel.x / speed) * params.Ein;
+            this.vel.y = (this.vel.y / speed) * params.Ein;
+        }
+
+        this.pos.x += this.vel.x;
+        this.pos.y += this.vel.y;
+
+        if (this.pos.x < 0) this.pos.x = 0;
+        if (this.pos.x > width) this.pos.x = width;
+        if (this.pos.y < 0) this.pos.y = 0;
+        if (this.pos.y > height) this.pos.y = height;
+
+        if (time % 3 === 0) {
+            this.history.push({x: this.pos.x, y: this.pos.y});
+            if(this.history.length > 15) this.history.shift();
+        }
+    }
+
+    draw() {
+        let r, g, b;
+        if (params.sigma > 0.6) {
+             r = 244; g = 63; b = 94; 
+        } else {
+             let coherence = params.D * (1 - params.sigma);
+             r = 56 + 100*coherence; g = 189 + 66*coherence; b = 248; 
+        }
+
+        ctx.strokeStyle = `rgba(${r},${g},${b}, 0.5)`;
+        ctx.beginPath();
+        for(let i=0; i<this.history.length-1; i++){
+            ctx.moveTo(this.history[i].x, this.history[i].y);
+            ctx.lineTo(this.history[i+1].x, this.history[i+1].y);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    getJerk() {
+        return Math.hypot(this.acc.x - this.prevAcc.x, this.acc.y - this.prevAcc.y);
+    }
+}
+
+function init() {
+    resize();
+    resetSim();
+    animate();
+}
+
+function resize() {
+    width = canvasContainer.clientWidth;
+    height = canvasContainer.clientHeight;
+    canvas.width = width;
+    canvas.height = height;
+}
+
+function resetSim() {
+    seed = 12345;
+    agents = [];
+    time = 0;
+    isPaused = false;
+    updatePauseBtn();
+    
+    for (let i = 0; i < AGENT_COUNT; i++) {
+        agents.push(new Agent());
+    }
+    updateUI();
+}
+
+function updateUI() {
+    document.getElementById('f-sigma').innerText = params.sigma.toFixed(2);
+    document.getElementById('f-d').innerText = params.D.toFixed(2);
+    document.getElementById('f-ein').innerText = params.Ein.toFixed(1);
+    
+    let seff = (1 - params.sigma) * params.D * params.Ein;
+    document.getElementById('f-out').innerText = seff.toFixed(2);
+
+    let orderVal = parseFloat(document.getElementById('metric-order').innerText);
+    
+    if (params.sigma > 0.6) {
+        statusBox.innerText = "【野暮 / Yabo】 乱流・高エントロピー";
+        statusBox.style.color = "#f43f5e";
+        statusBox.style.borderColor = "#f43f5e";
+        statusBox.style.backgroundColor = "#fff1f2";
+    } else if (seff > 1.5 && orderVal > 0.7) {
+        statusBox.innerText = "【意気 / Iki】 層流・コヒーレント";
+        statusBox.style.color = "#0ea5e9";
+        statusBox.style.borderColor = "#0ea5e9";
+        statusBox.style.backgroundColor = "#f0f9ff";
+    } else {
+        statusBox.innerText = "【遷移 / Transition】";
+        statusBox.style.color = "#64748b";
+        statusBox.style.borderColor = "#cbd5e1";
+        statusBox.style.backgroundColor = "#fff";
+    }
+}
+
+function updatePauseBtn() {
+    pauseBtn.innerText = isPaused ? "▶ 再開" : "⏸ 一時停止";
+    if(isPaused) pauseBtn.classList.add('paused');
+    else pauseBtn.classList.remove('paused');
+}
+
+function animate() {
+    if (!isPaused) {
+        // 倍速ループ
+        for(let s=0; s<simSpeed; s++) {
+            // 自動停止チェック (T=1000で止める)
+            if (autoStopCheckbox.checked && time >= 1000) {
+                isPaused = true;
+                updatePauseBtn();
+                break; // ループを抜けて描画へ
+            }
+
+            let totalJerk = 0;
+            let avgVel = {x:0, y:0};
+
+            for (let agent of agents) {
+                agent.update(agents);
+                totalJerk += agent.getJerk();
+                avgVel.x += agent.vel.x;
+                avgVel.y += agent.vel.y;
+            }
+            time++;
+
+            if (s === simSpeed - 1 || isPaused) { // 最終フレームか停止時に計算
+                let speedSum = agents.length * params.Ein;
+                let vectorSum = Math.hypot(avgVel.x, avgVel.y);
+                let orderParam = (speedSum > 0) ? (vectorSum / speedSum) : 0;
+                let avgJerk = totalJerk / agents.length;
+
+                document.getElementById('metric-order').innerText = orderParam.toFixed(2);
+                document.getElementById('metric-jerk').innerText = avgJerk.toFixed(2);
+            }
+        }
+        updateUI(); 
+    }
+
+    ctx.clearRect(0, 0, width, height);
+    for (let agent of agents) {
+        agent.draw();
+    }
+    document.getElementById('time-val').innerText = time;
+
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', resize);
+
+uiIds.forEach(id => {
+    document.getElementById(id).addEventListener('input', (e) => {
+        params[{'speed':'Ein', 'noise':'sigma', 'align':'D'}[id]] = parseFloat(e.target.value);
+        document.getElementById('val-' + id).innerText = parseFloat(e.target.value);
+        updateUI();
+    });
+});
+
+pauseBtn.addEventListener('click', function() {
+    isPaused = !isPaused;
+    updatePauseBtn();
+});
+
+document.getElementById('btn-reset').addEventListener('click', resetSim);
+
+const speedBtns = [1, 5, 20];
+speedBtns.forEach(s => {
+    document.getElementById(`btn-speed-${s}`).addEventListener('click', function() {
+        simSpeed = s;
+        speedBtns.forEach(sb => document.getElementById(`btn-speed-${sb}`).classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+
+init();
+</script>
+</body>
+</html>
